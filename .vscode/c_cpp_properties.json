@@ -4,7 +4,8 @@
             "name": "Mac",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/opt/homebrew/include/"
+                "/opt/homebrew/include/",
+                "/Users/JedComia/Library/Caches/Homebrew/downloads/"
             ],
             "defines": [],
             "macFrameworkPath": [
