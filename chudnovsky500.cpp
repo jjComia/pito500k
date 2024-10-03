@@ -1,77 +1,79 @@
 #include <iostream>
-#include <mpfr.h>
+#include <gmp.h>
 
-void compute_pi_chudnovsky(mpfr_t pi, long digits) {
-    // Set precision in bits (log2(10) ≈ 3.32 bits per decimal digit)
-    long precision_bits = digits * 3.32193;  // Approximate conversion from digits to bits
+void chudnovsky(mpf_t term, int cycle){ 
+    mpz_t temp1, temp4, temp5, temp6, temp7;        
+    mpf_t temp2, temp3, temp6_f, temp7_f, temp4_f;  
+        
+    mpz_inits(temp1, temp4, temp5, temp6, temp7, NULL);
+    mpf_inits(temp2, temp3, temp4_f, temp6_f, temp7_f, NULL);
 
-    // Initialize necessary variables with the set precision
-    mpfr_set_default_prec(precision_bits);
-
-    mpfr_t sum, term, factorial_k, factorial_3k, factorial_k_3, power_640320, temp, constant;
-    mpfr_inits(sum, term, factorial_k, factorial_3k, factorial_k_3, power_640320, temp, constant, NULL);
-
-    // Set up constants used in the Chudnovsky algorithm
-    mpfr_set_ui(sum, 0, MPFR_RNDN);                 // sum = 0
-    mpfr_set_ui(factorial_k, 1, MPFR_RNDN);          // factorial_k = 1
-    mpfr_set_ui(factorial_3k, 1, MPFR_RNDN);         // factorial_3k = 1
-    mpfr_set_ui(factorial_k_3, 1, MPFR_RNDN);        // factorial_k_3 = 1
-
-    mpfr_ui_pow_ui(power_640320, 640320, 3, MPFR_RNDN);  // 640320^3
-    mpfr_sqrt_ui(temp, 10005, MPFR_RNDN);                // sqrt(10005)
-    mpfr_mul_ui(constant, temp, 426880, MPFR_RNDN);      // constant = 426880 * sqrt(10005)
-
-    // Loop for Chudnovsky series
-    for (long k = 0; k < (digits / 14) + 1; ++k) {
-        // Calculate the numerator: (-1)^k * (6k)! * (13591409 + 545140134 * k)
-        mpfr_fac_ui(factorial_k, 6 * k, MPFR_RNDN);    // factorial_k = (6k)!
-        mpfr_mul_si(temp, factorial_k, 13591409 + 545140134 * k, MPFR_RNDN);  // temp = (13591409 + 545140134 * k)
-
-        // If k is odd, negate the term
-        if (k % 2 == 1) mpfr_neg(temp, temp, MPFR_RNDN);  // (-1)^k factor
-
-        // Calculate the denominator: (3k)! * (k!)^3 * (640320^(3k + 3/2))
-        mpfr_fac_ui(factorial_3k, 3 * k, MPFR_RNDN);   // factorial_3k = (3k)!
-        mpfr_fac_ui(factorial_k, k, MPFR_RNDN);        // factorial_k = k!
-        mpfr_pow_ui(factorial_k_3, factorial_k, 3, MPFR_RNDN);  // factorial_k_3 = (k!)^3
-
-        // Calculate power_640320^(3k)
-        mpfr_pow_ui(power_640320, power_640320, 3 * k, MPFR_RNDN);
-
-        // Multiply all the denominators
-        mpfr_mul(term, factorial_3k, factorial_k_3, MPFR_RNDN);  // term = (3k)! * (k!)^3
-        mpfr_mul(term, term, power_640320, MPFR_RNDN);           // term *= 640320^(3k)
-
-        // Compute final term = numerator / denominator
-        mpfr_div(term, temp, term, MPFR_RNDN);  // term = numerator / denominator
-
-        // Add term to sum
-        mpfr_add(sum, sum, term, MPFR_RNDN);
+    mpz_set_ui(temp1, 545140134);
+    mpz_mul_ui(temp1, temp1, cycle);
+    mpz_add_ui(temp1, temp1, 13591409);
+    
+    mpf_set_ui(temp2, 640320);
+    mpf_pow_ui(temp2, temp2, 3 * cycle);    
+    mpf_set_d(temp3, 640320.0);
+    mpf_sqrt(temp3, temp3);              
+    mpf_mul_ui(temp3, temp3, 640320);     
+    mpf_mul(temp2, temp2, temp3);           
+    
+    if(cycle % 2 == 0){
+        mpz_set_ui(temp4, 1);
+    }
+    else{
+        mpz_set_si(temp4, -1);
     }
 
-    // Multiply sum by constant to get 1/pi, then invert to get pi
-    mpfr_mul(sum, sum, constant, MPFR_RNDN);  // sum = constant * sum
-    mpfr_ui_div(pi, 1, sum, MPFR_RNDN);       // pi = 1 / sum
 
-    // Clear variables
-    mpfr_clears(sum, term, factorial_k, factorial_3k, factorial_k_3, power_640320, temp, constant, NULL);
+    mpz_fac_ui(temp5, 6*cycle);          
+    mpz_fac_ui(temp6, 3*cycle);            
+    mpz_fac_ui(temp7, cycle);              
+    mpz_pow_ui(temp7, temp7, 3);
+
+    mpz_mul(temp4, temp4, temp5);
+    mpz_mul(temp4, temp4, temp1); 
+
+    mpf_set_z(temp6_f, temp6);
+    mpf_set_z(temp7_f, temp7);
+    mpf_set_z(temp4_f, temp4);            
+
+    mpf_mul(temp6_f, temp6_f, temp7_f);
+    mpf_mul(temp6_f, temp6_f, temp2);      
+
+    mpf_div(term, temp4_f, temp6_f);
+    mpf_mul_ui(term, term, 12);
+
+    mpf_clears(temp2, temp3, temp4_f, temp6_f, temp7_f, NULL);
+    mpz_clears(temp1, temp4, temp5, temp6, temp7, NULL);
+}
+
+void calculate_pi(mpf_t pi, unsigned long n_digits) {
+    mpf_t term;
+    mpf_init(term);
+    
+    for (unsigned long k = 0; k < n_digits/14; k++) {
+        chudnovsky(term, k);
+        mpf_add(pi, pi, term);  
+    }
+
+    mpf_ui_div(pi, 1, pi);
+    mpf_clear(term);
 }
 
 int main() {
-    // Set the number of digits of π we want
-    long digits = 500000;
+    unsigned long n_digits = 1000;                   
+    unsigned long precision = n_digits * 3.32193;    
 
-    // Create an mpfr_t variable to store the result
-    mpfr_t pi;
-    mpfr_init2(pi, digits * 3.32193);  // Set precision in bits
+    mpf_t pi;
+    mpf_init2(pi, precision);                          
+    mpf_set_ui(pi, 0);                                
 
-    // Compute π
-    compute_pi_chudnovsky(pi, digits);
+    calculate_pi(pi, n_digits);
+    gmp_printf("Pi to 500000 digits: %.1000Ff\n", pi);  
 
-    // Output π with high precision
-    mpfr_printf("%.500000Rf\n", pi);  // Print pi with specified digits
+    mpf_clear(pi);
 
-    // Clear memory
-    mpfr_clear(pi);
     return 0;
 }
